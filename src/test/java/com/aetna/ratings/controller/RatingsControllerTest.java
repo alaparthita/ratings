@@ -50,6 +50,51 @@ class RatingsControllerTest {
                 .andExpect(jsonPath("$[0].rating").value(4.5));
     }
 
+    //@Test
+    void testGetMovieRatingsWithEmptyList() throws Exception {
+        mockMvc.perform(post("/api/v1/ratings/movies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("[]"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Movie IDs list cannot be null or empty"));
+    }
 
-    
+    //@Test
+    void testGetMovieRatingsWithServerError() throws Exception {
+        when(ratingsService.getAllMoviesRating(movieIds)).thenThrow(new RuntimeException("Database error"));
+
+        mockMvc.perform(post("/api/v1/ratings/movies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("[1, 2, 3]"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("Database error"));
+    }
+
+    //@Test
+    void testGetMovieRating() throws Exception {
+        when(ratingsService.geMovieRating(1)).thenReturn(java.util.Optional.of(ratingSummary));
+
+        mockMvc.perform(get("/api/v1/ratings/movie/1")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.movieId").value(1))
+                .andExpect(jsonPath("$.rating").value(4.5));
+    }
+
+    //@Test
+    void testGetMovieRatingNotFound() throws Exception {
+        when(ratingsService.geMovieRating(1)).thenReturn(java.util.Optional.empty());
+
+        mockMvc.perform(get("/api/v1/ratings/movie/1")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Movie rating not found for ID: 1"));
+    }
+
+    //@Test
+    void testGetMovieRatingWithInvalidId() throws Exception {
+        mockMvc.perform(get("/api/v1/ratings/movie/")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
 }

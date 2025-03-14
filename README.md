@@ -15,6 +15,6 @@ http://localhost:8081/actuator/prometheus
 
 - Created index for movieId in ratings DB
 
-docker network create mynetwork
+- All the requested apis were tested using Postman. Unit tests are not completely done due to time constraints.
 
-Created some tests (not complete due to time constraints)
+- Docker image can be built using Docker file
