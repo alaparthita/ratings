@@ -1,3 +1,6 @@
+Clone the repo and run the following command to start the movies app. DB is included in the repo. Make sure to run ratings app first. 
+./gradlew bootRun
+
 OpenApi UI endpoints
 http://localhost:8081/swagger-ui/index.html
 
