@@ -1,0 +1,105 @@
+openapi: 3.1.0
+info:
+  title: OpenAPI definition
+  version: v0
+servers:
+- url: http://localhost:8081
+  description: Generated server url
+paths:
+  /api/v1/ratings/movies:
+    post:
+      tags:
+      - ratings-controller
+      summary: Get ratings for multiple movies
+      description: Fetch average ratings for a list of movie IDs
+      operationId: getMovieRatings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              description: List of movie IDs to fetch ratings for
+              items:
+                type: integer
+                format: int32
+        required: true
+      responses:
+        "200":
+          description: Successfully retrieved ratings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingSummary"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetails"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetails"
+  /api/v1/ratings/movie/{movieId}:
+    get:
+      tags:
+      - ratings-controller
+      summary: Get rating for a single movie
+      description: Fetch average rating for a specific movie ID
+      operationId: getMovieRating
+      parameters:
+      - name: movieId
+        in: path
+        description: ID of the movie to fetch rating for
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: Successfully retrieved rating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingSummary"
+        "400":
+          description: Invalid movie ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetails"
+        "404":
+          description: Movie not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetails"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetails"
+components:
+  schemas:
+    RatingSummary:
+      type: object
+      properties:
+        movieId:
+          type: integer
+          format: int32
+        rating:
+          type: number
+          format: double
+    ErrorDetails:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          format: int32
+        message:
+          type: string
+        details:
+          type: string
