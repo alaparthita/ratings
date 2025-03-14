@@ -1,0 +1,28 @@
+server:
+  port: 8081
+  address: 0.0.0.0
+spring:
+  application:
+    name: movies
+  datasource:
+    url: jdbc:sqlite:./src/main/resources/ratings.db
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+      
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+
+
+
+

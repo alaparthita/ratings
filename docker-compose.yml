@@ -1,0 +1,25 @@
+
+services:
+  app:
+    image: ratings # Replace with the image name you built for your Spring Boot app
+    build: .
+    ports:
+      - "8081:8081"
+    volumes:
+      - .\src\main\resources:/data/db  # Mount the database file from your host system
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:sqlite:/data/db/ratings.db  # Location of SQLite DB inside the container
+    networks:
+      - mynetwork
+    # depends_on:
+    #  - db  # Optional: If you still need to define dependencies like DBs for other services, but SQLite is self-contained
+  
+
+# Volumes section is optional since we're directly mounting the SQLite file in this case
+volumes:
+  db:
+    driver: local
+
+networks:
+  mynetwork: 
+    external: true
