@@ -21,13 +21,7 @@ import com.aetna.ratings.exception.RatingsServiceException;
 import com.aetna.ratings.exception.ResourceNotFoundException;
 import com.aetna.ratings.service.RatingsService;
 
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
@@ -42,82 +36,12 @@ public class RatingsController {
         this.ratingsService = ratingsService;
     }
 
-    @Operation(
-        summary = "Get ratings for multiple movies",
-        description = """
-            Fetch average ratings for a list of movie IDs in a single request.
-            Returns a list of RatingSummary objects containing movie IDs and their corresponding average ratings.
-            Movies without ratings will be included in the response with a null rating value.
-            The order of ratings in the response matches the order of movie IDs in the request.
-            """
-    )
-    @ApiResponses({
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully retrieved ratings for all requested movies",
-            content = @Content(
-                mediaType = "application/json",
-                array = @ArraySchema(schema = @Schema(implementation = RatingSummary.class)),
-                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                    value = """
-                    [
-                        {
-                            "movieId": 1,
-                            "averageRating": 8.9,
-                            "numberOfRatings": 2500
-                        },
-                        {
-                            "movieId": 2,
-                            "averageRating": 7.5,
-                            "numberOfRatings": 1800
-                        }
-                    ]
-                    """
-                )
-            )
-        ),
-        @ApiResponse(
-            responseCode = "400",
-            description = "Invalid request - empty list, non-integer IDs, or negative IDs",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = ErrorDetails.class),
-                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                    value = """
-                    {
-                        "statusCode": 400,
-                        "message": "Movie IDs list cannot be null or empty",
-                        "details": "uri=/api/v1/ratings/movies"
-                    }
-                    """
-                )
-            )
-        ),
-        @ApiResponse(
-            responseCode = "500",
-            description = "Internal server error while processing the request",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = ErrorDetails.class),
-                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                    value = """
-                    {
-                        "statusCode": 500,
-                        "message": "Error occurred while retrieving movie ratings",
-                        "details": "Database connection error"
-                    }
-                    """
-                )
-            )
-        )
-    })
     @RequestMapping(value = "/movies", method = RequestMethod.POST)
     public ResponseEntity<?> getMovieRatings(
             @RequestBody
             @Parameter(
                 description = "List of movie IDs to fetch ratings for",
-                required = true,
-                schema = @Schema(type = "array", implementation = Integer.class)
+                required = true
             ) List<Integer> movieIds) {
         if (movieIds == null || movieIds.isEmpty()) {
             return new ResponseEntity<>(new ErrorDetails(HttpStatus.BAD_REQUEST.value(), "Movie IDs list cannot be null or empty", ""), HttpStatus.BAD_REQUEST);
@@ -134,94 +58,12 @@ public class RatingsController {
         }
     }
 
-    @Operation(
-        summary = "Get rating for a single movie",
-        description = """
-            Fetch the average rating for a specific movie by its ID.
-            Returns a RatingSummary object containing:
-            - Movie ID
-            - Average rating (on a scale of 0 to 10)
-            - Total number of ratings submitted
-            Returns 404 if no ratings are found for the specified movie.
-            """
-    )
-    @ApiResponses({
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully retrieved movie rating",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = RatingSummary.class),
-                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                    value = """
-                    {
-                        "movieId": 1,
-                        "averageRating": 8.9,
-                        "numberOfRatings": 2500
-                    }
-                    """
-                )
-            )
-        ),
-        @ApiResponse(
-            responseCode = "400",
-            description = "Invalid movie ID format or value",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = ErrorDetails.class),
-                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                    value = """
-                    {
-                        "statusCode": 400,
-                        "message": "Failed to convert value 'abc' to required type 'Integer'",
-                        "details": "uri=/api/v1/ratings/movie/abc"
-                    }
-                    """
-                )
-            )
-        ),
-        @ApiResponse(
-            responseCode = "404",
-            description = "No rating found for the specified movie ID",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = ErrorDetails.class),
-                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                    value = """
-                    {
-                        "statusCode": 404,
-                        "message": "Movie rating not found for ID: 999",
-                        "details": "Movie ID: 999"
-                    }
-                    """
-                )
-            )
-        ),
-        @ApiResponse(
-            responseCode = "500",
-            description = "Internal server error while retrieving the rating",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = ErrorDetails.class),
-                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                    value = """
-                    {
-                        "statusCode": 500,
-                        "message": "Error occurred while retrieving movie rating",
-                        "details": "Movie ID: 1"
-                    }
-                    """
-                )
-            )
-        )
-    })
     @GetMapping(value = {"/movie/{movieId}", "/movie"})
     public ResponseEntity<?> getMovieRating(
             @PathVariable(value = "movieId", required = false)
             @Parameter(
                 description = "ID of the movie to fetch rating for",
-                required = true,
-                schema = @Schema(type = "integer", format = "int32")
+                required = true
             ) String movieIdStr) {
         if (movieIdStr == null || movieIdStr.trim().isEmpty()) {
             return new ResponseEntity<>(new ErrorDetails(HttpStatus.BAD_REQUEST.value(), "Movie ID is required", ""), HttpStatus.BAD_REQUEST);
