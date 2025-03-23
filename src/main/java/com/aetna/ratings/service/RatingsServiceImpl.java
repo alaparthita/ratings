@@ -1,16 +1,18 @@
 package com.aetna.ratings.service;
 
-import com.aetna.ratings.dto.RatingSummary;
-import com.aetna.ratings.exception.RatingsServiceException;
-import com.aetna.ratings.exception.ResourceNotFoundException;
-import com.aetna.ratings.repository.RatingsRepository;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PathVariable;
 
-import java.util.List;
-import java.util.Optional;
+import com.aetna.ratings.dto.RatingSummary;
+import com.aetna.ratings.exception.RatingsServiceException;
+import com.aetna.ratings.exception.ResourceNotFoundException;
+import com.aetna.ratings.repository.RatingsRepository;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
@@ -25,6 +27,10 @@ public class RatingsServiceImpl implements RatingsService {
 
     @Override
     public List<RatingSummary> getAllMoviesRating(List<Integer> movieIds) {
+        if (movieIds == null || movieIds.isEmpty()) {
+            throw new IllegalArgumentException("Movie IDs list cannot be null or empty");
+        }
+        
         log.info("Retrieving avg movie ratings for " + movieIds.size() + " movies");
         try {
             return ratingsRepository.getAvgRatingsForMoviesList(movieIds);
@@ -35,6 +41,13 @@ public class RatingsServiceImpl implements RatingsService {
 
     @Override
     public Optional<RatingSummary> geMovieRating(@PathVariable("movieId") Integer movieId) {
+        if (movieId == null) {
+            throw new IllegalArgumentException("Movie ID cannot be null");
+        }
+        
+        if (movieId < 0) {
+            throw new IllegalArgumentException("Movie ID cannot be negative");
+        }
 
         try {
             Optional<RatingSummary> ratingSummary = ratingsRepository.getAvgRatingForMovie(movieId);
@@ -48,6 +61,5 @@ public class RatingsServiceImpl implements RatingsService {
         } catch (RuntimeException e) {
             throw new RatingsServiceException("An error occurred while retrieving the movie rating for ID: " + movieId, e);
         }
-
     }
 }
