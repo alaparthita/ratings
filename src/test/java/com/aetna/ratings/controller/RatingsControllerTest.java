@@ -1,13 +1,13 @@
 package com.aetna.ratings.controller;
 
 import com.aetna.ratings.dto.RatingSummary;
+import com.aetna.ratings.exception.RatingsServiceException;
 import com.aetna.ratings.service.RatingsService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import java.util.Arrays;
@@ -17,14 +17,13 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@ExtendWith(MockitoExtension.class)
 @WebMvcTest(RatingsController.class)
 class RatingsControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Mock
+    @MockBean
     private RatingsService ratingsService;
 
     private List<Integer> movieIds;
@@ -33,12 +32,10 @@ class RatingsControllerTest {
     @BeforeEach
     void setUp() {
         movieIds = Arrays.asList(1, 2, 3);
-        ratingSummary = mock(RatingSummary.class);
-        when(ratingSummary.getMovieId()).thenReturn(1);
-        when(ratingSummary.getRating()).thenReturn(4.5);
+        ratingSummary = new RatingSummary(1, 4.5);
     }
 
-    //@Test
+    @Test
     void testGetMovieRatings() throws Exception {
         when(ratingsService.getAllMoviesRating(movieIds)).thenReturn(Arrays.asList(ratingSummary));
 
@@ -50,7 +47,7 @@ class RatingsControllerTest {
                 .andExpect(jsonPath("$[0].rating").value(4.5));
     }
 
-    //@Test
+    @Test
     void testGetMovieRatingsWithEmptyList() throws Exception {
         mockMvc.perform(post("/api/v1/ratings/movies")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -59,7 +56,7 @@ class RatingsControllerTest {
                 .andExpect(jsonPath("$.message").value("Movie IDs list cannot be null or empty"));
     }
 
-    //@Test
+    @Test
     void testGetMovieRatingsWithServerError() throws Exception {
         when(ratingsService.getAllMoviesRating(movieIds)).thenThrow(new RuntimeException("Database error"));
 
@@ -70,7 +67,7 @@ class RatingsControllerTest {
                 .andExpect(jsonPath("$.message").value("Database error"));
     }
 
-    //@Test
+    @Test
     void testGetMovieRating() throws Exception {
         when(ratingsService.geMovieRating(1)).thenReturn(java.util.Optional.of(ratingSummary));
 
@@ -81,7 +78,7 @@ class RatingsControllerTest {
                 .andExpect(jsonPath("$.rating").value(4.5));
     }
 
-    //@Test
+    @Test
     void testGetMovieRatingNotFound() throws Exception {
         when(ratingsService.geMovieRating(1)).thenReturn(java.util.Optional.empty());
 
@@ -91,10 +88,95 @@ class RatingsControllerTest {
                 .andExpect(jsonPath("$.message").value("Movie rating not found for ID: 1"));
     }
 
-    //@Test
-    void testGetMovieRatingWithInvalidId() throws Exception {
-        mockMvc.perform(get("/api/v1/ratings/movie/")
+    @Test
+    void testGetMovieRatingWithMissingId() throws Exception {
+        mockMvc.perform(get("/api/v1/ratings/movie")
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Movie ID is required"));
+    }
+
+    @Test
+    void testGetMovieRatingWithInvalidIdFormat() throws Exception {
+        mockMvc.perform(get("/api/v1/ratings/movie/invalid")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Failed to convert value 'invalid' to required type 'Integer'"));
+    }
+
+    @Test
+    void testGetMovieRatingsWithInvalidJsonFormat() throws Exception {
+        mockMvc.perform(post("/api/v1/ratings/movies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("invalid json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid request body format"));
+    }
+
+    @Test
+    void testGetMovieRatingsWithNonIntegerValues() throws Exception {
+        mockMvc.perform(post("/api/v1/ratings/movies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("[1, \"two\", 3]"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid movie ID format. All IDs must be integers."));
+    }
+
+    @Test
+    void testGetMovieRatingsWithNegativeIds() throws Exception {
+        List<Integer> negativeIds = Arrays.asList(1, -2, 3);
+        when(ratingsService.getAllMoviesRating(negativeIds))
+                .thenThrow(new IllegalArgumentException("Movie ID cannot be negative"));
+
+        mockMvc.perform(post("/api/v1/ratings/movies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("[1, -2, 3]"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Movie ID cannot be negative"));
+    }
+
+    @Test
+    void testGetMovieRatingsWithNullValues() throws Exception {
+        List<Integer> idsWithNull = Arrays.asList(1, 0, 3);
+        when(ratingsService.getAllMoviesRating(idsWithNull)).thenReturn(Arrays.asList(ratingSummary));
+
+        mockMvc.perform(post("/api/v1/ratings/movies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("[1, null, 3]"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testGetMovieRatingsWithRatingsServiceException() throws Exception {
+        when(ratingsService.getAllMoviesRating(movieIds))
+                .thenThrow(new RatingsServiceException("Service error"));
+
+        mockMvc.perform(post("/api/v1/ratings/movies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("[1, 2, 3]"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("Service error"));
+    }
+
+    @Test
+    void testGetMovieRatingWithNegativeId() throws Exception {
+        when(ratingsService.geMovieRating(-1))
+                .thenThrow(new IllegalArgumentException("Movie ID cannot be negative"));
+
+        mockMvc.perform(get("/api/v1/ratings/movie/-1")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Movie ID cannot be negative"));
+    }
+
+    @Test
+    void testGetMovieRatingWithRatingsServiceException() throws Exception {
+        when(ratingsService.geMovieRating(1))
+                .thenThrow(new RatingsServiceException("Service error"));
+
+        mockMvc.perform(get("/api/v1/ratings/movie/1")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("Service error"));
     }
 }
