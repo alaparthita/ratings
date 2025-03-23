@@ -23,13 +23,16 @@ import com.aetna.ratings.service.RatingsService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/v1/ratings")
+@Tag(name = "Ratings", description = "API for managing movie ratings")
 public class RatingsController {
 
     public RatingsService ratingsService;
@@ -39,19 +42,44 @@ public class RatingsController {
         this.ratingsService = ratingsService;
     }
 
-    @Operation(summary = "Get ratings for multiple movies", description = "Fetch average ratings for a list of movie IDs")
+    @Operation(
+        summary = "Get ratings for multiple movies",
+        description = "Fetch average ratings for a list of movie IDs. Returns a list of RatingSummary objects containing movie IDs and their average ratings."
+    )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Successfully retrieved ratings",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = RatingSummary.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorDetails.class))),
-            @ApiResponse(responseCode = "500", description = "Internal server error",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorDetails.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved ratings",
+            content = @Content(
+                mediaType = "application/json",
+                array = @ArraySchema(schema = @Schema(implementation = RatingSummary.class))
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid input",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorDetails.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorDetails.class)
+            )
+        )
     })
     @RequestMapping(value = "/movies", method = RequestMethod.POST)
     public ResponseEntity<?> getMovieRatings(
             @RequestBody
-            @Parameter(description = "List of movie IDs to fetch ratings for", required = true) List<Integer> movieIds) {
+            @Parameter(
+                description = "List of movie IDs to fetch ratings for",
+                required = true,
+                schema = @Schema(type = "array", implementation = Integer.class)
+            ) List<Integer> movieIds) {
         if (movieIds == null || movieIds.isEmpty()) {
             return new ResponseEntity<>(new ErrorDetails(HttpStatus.BAD_REQUEST.value(), "Movie IDs list cannot be null or empty", ""), HttpStatus.BAD_REQUEST);
         }
@@ -67,39 +95,78 @@ public class RatingsController {
         }
     }
 
-    @Operation(summary = "Get rating for a single movie", description = "Fetch average rating for a specific movie ID")
+    @Operation(
+        summary = "Get rating for a single movie",
+        description = "Fetch average rating for a specific movie ID. Returns a RatingSummary object containing the movie ID and its average rating."
+    )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Successfully retrieved rating",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = RatingSummary.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid movie ID",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorDetails.class))),
-            @ApiResponse(responseCode = "404", description = "Movie not found",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorDetails.class))),
-            @ApiResponse(responseCode = "500", description = "Internal server error",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorDetails.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved rating",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = RatingSummary.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid movie ID",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorDetails.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Movie not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorDetails.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorDetails.class)
+            )
+        )
     })
     @GetMapping(value = {"/movie/{movieId}", "/movie"})
     public ResponseEntity<?> getMovieRating(
             @PathVariable(value = "movieId", required = false)
-            @Parameter(description = "ID of the movie to fetch rating for", required = true) Integer movieId) {
-        if (movieId == null) {
+            @Parameter(
+                description = "ID of the movie to fetch rating for",
+                required = true,
+                schema = @Schema(type = "integer", format = "int32")
+            ) String movieIdStr) {
+        if (movieIdStr == null || movieIdStr.trim().isEmpty()) {
             return new ResponseEntity<>(new ErrorDetails(HttpStatus.BAD_REQUEST.value(), "Movie ID is required", ""), HttpStatus.BAD_REQUEST);
         }
+        
         try {
+            int movieId = Integer.parseInt(movieIdStr);
+            if (movieId <= 0) {
+                return new ResponseEntity<>(new ErrorDetails(HttpStatus.BAD_REQUEST.value(), "Movie ID cannot be negative", ""), HttpStatus.BAD_REQUEST);
+            }
+            
             Optional<RatingSummary> ratingSummary = ratingsService.geMovieRating(movieId);
             if (ratingSummary.isPresent()) {
                 return new ResponseEntity<>(ratingSummary.get(), HttpStatus.OK);
             } else {
                 throw new ResourceNotFoundException("Movie rating not found for ID: " + movieId);
             }
+        } catch (NumberFormatException e) {
+            return new ResponseEntity<>(new ErrorDetails(HttpStatus.BAD_REQUEST.value(), "Failed to convert value '" + movieIdStr + "' to required type 'Integer'", ""), HttpStatus.BAD_REQUEST);
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>(new ErrorDetails(HttpStatus.BAD_REQUEST.value(), e.getMessage(), ""), HttpStatus.BAD_REQUEST);
         } catch (ResourceNotFoundException e) {
-            return new ResponseEntity<>(new ErrorDetails(HttpStatus.NOT_FOUND.value(), e.getMessage(), "Movie ID: " + movieId), HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(new ErrorDetails(HttpStatus.NOT_FOUND.value(), e.getMessage(), "Movie ID: " + movieIdStr), HttpStatus.NOT_FOUND);
         } catch (RatingsServiceException e) {
-            return new ResponseEntity<>(new ErrorDetails(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage(), "Movie ID: " + movieId), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(new ErrorDetails(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage(), "Movie ID: " + movieIdStr), HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (Exception e) {
-            return new ResponseEntity<>(new ErrorDetails(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage(), "Movie ID: " + movieId), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(new ErrorDetails(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage(), "Movie ID: " + movieIdStr), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

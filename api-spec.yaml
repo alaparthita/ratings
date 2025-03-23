@@ -1,19 +1,21 @@
 openapi: 3.1.0
 info:
-  title: OpenAPI definition
-  version: v0
+  title: Ratings API
+  description: API for managing movie ratings
+  version: 1.0.0
 servers:
 - url: http://localhost:8081
-  description: Generated server url
+  description: Local development server
 paths:
   /api/v1/ratings/movies:
     post:
       tags:
-      - ratings-controller
+      - Ratings
       summary: Get ratings for multiple movies
-      description: Fetch average ratings for a list of movie IDs
+      description: Fetch average ratings for a list of movie IDs. Returns a list of RatingSummary objects containing movie IDs and their average ratings.
       operationId: getMovieRatings
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -22,32 +24,59 @@ paths:
               items:
                 type: integer
                 format: int32
-        required: true
+              example: [1, 2, 3]
       responses:
         "200":
           description: Successfully retrieved ratings
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RatingSummary"
+                type: array
+                items:
+                  $ref: "#/components/schemas/RatingSummary"
+                example:
+                  - movieId: 1
+                    rating: 4.5
+                  - movieId: 2
+                    rating: 3.8
         "400":
           description: Invalid input
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorDetails"
+              examples:
+                emptyList:
+                  value:
+                    statusCode: 400
+                    message: "Movie IDs list cannot be null or empty"
+                    details: ""
+                invalidFormat:
+                  value:
+                    statusCode: 400
+                    message: "Invalid movie ID format. All IDs must be integers."
+                    details: ""
+                negativeId:
+                  value:
+                    statusCode: 400
+                    message: "Movie ID cannot be negative"
+                    details: ""
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorDetails"
+              example:
+                statusCode: 500
+                message: "An error occurred while retrieving movie ratings"
+                details: "Error retrieving movies"
   /api/v1/ratings/movie/{movieId}:
     get:
       tags:
-      - ratings-controller
+      - Ratings
       summary: Get rating for a single movie
-      description: Fetch average rating for a specific movie ID
+      description: Fetch average rating for a specific movie ID. Returns a RatingSummary object containing the movie ID and its average rating.
       operationId: getMovieRating
       parameters:
       - name: movieId
@@ -57,6 +86,7 @@ paths:
         schema:
           type: integer
           format: int32
+        example: 1
       responses:
         "200":
           description: Successfully retrieved rating
@@ -64,42 +94,83 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RatingSummary"
+              example:
+                movieId: 1
+                rating: 4.5
         "400":
           description: Invalid movie ID
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorDetails"
+              examples:
+                missingId:
+                  value:
+                    statusCode: 400
+                    message: "Movie ID is required"
+                    details: ""
+                negativeId:
+                  value:
+                    statusCode: 400
+                    message: "Movie ID cannot be negative"
+                    details: ""
+                invalidFormat:
+                  value:
+                    statusCode: 400
+                    message: "Failed to convert value 'invalid' to required type 'Integer'"
+                    details: ""
         "404":
           description: Movie not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorDetails"
+              example:
+                statusCode: 404
+                message: "Movie rating not found for ID: 1"
+                details: "Movie ID: 1"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorDetails"
+              example:
+                statusCode: 500
+                message: "An error occurred while retrieving the movie rating"
+                details: "Movie ID: 1"
 components:
   schemas:
     RatingSummary:
       type: object
+      description: Summary of a movie's rating
       properties:
         movieId:
           type: integer
           format: int32
+          description: The ID of the movie
         rating:
           type: number
           format: double
+          description: The average rating for the movie
+      required:
+        - movieId
+        - rating
     ErrorDetails:
       type: object
+      description: Error response details
       properties:
         statusCode:
           type: integer
           format: int32
+          description: HTTP status code
         message:
           type: string
+          description: Error message
         details:
           type: string
+          description: Additional error details
+      required:
+        - statusCode
+        - message
+        - details
