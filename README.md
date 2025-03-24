@@ -113,11 +113,6 @@ OpenTelemetry integration is available for distributed tracing. Enable it using 
 - Checkstyle for code style enforcement
 - Unit tests for core functionality
 
-To run code quality checks:
-```bash
-./gradlew check
-```
-
 ## Docker Support
 
 Build the Docker image:
@@ -143,6 +138,7 @@ This service is designed to work with the Movies service:
    - Authentication/Authorization
    - Rate limiting
    - Request routing
+   - Distributed Caching
 
 2. Additional test coverage:
    - Performance tests
